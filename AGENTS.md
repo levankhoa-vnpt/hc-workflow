@@ -11,7 +11,7 @@ Kiến trúc tổng thể: **Backend monolith `hc_code_app` (phòng khám) + Bac
 | Repo | Vai trò | Ngôn ngữ / Framework |
 |------|---------|----------------------|
 | `hc_code_app` | Monolith phòng khám (khám bệnh, dược, BHYT, LIS, e-prescription, e-invoice) | Java 8, Spring Boot 2.3.0, Maven |
-| `hc_code_saas` | Nền tảng SaaS (đăng ký/don hàng, tài khoản, RBAC, tenant, đăng nhập JWT/2FA) | Java 8, Spring Boot 2.3.0, Spring Cloud Hoxton |
+| `hc_code_saas` | Nền tảng SaaS (đăng ký/đơn hàng, tài khoản, RBAC, tenant, đăng nhập JWT/2FA) | Java 8, Spring Boot 2.3.0, Spring Cloud Hoxton |
 | `hc_code_saas_job` | Worker job theo lịch (clone schema tenant, xử lý đơn hàng, thống kê sản lượng, quét thuốc hết hạn) | Java 8, Spring Boot 2.2.7 |
 | `hc_code_frontend` | Web Angular cho phòng khám (monolith) + mobile PWA mockup | Angular 9 (JHipster), Webpack 4; mobile = HTML/PWA |
 | `hc_code_frontend_saas` | Web Angular cho nền tảng SaaS (quản trị đơn hàng, tài khoản, vai trò, CSYT) + mobile PWA mockup | Angular 9 (JHipster), Webpack 4; mobile = HTML/PWA |
@@ -22,7 +22,7 @@ Kiến trúc tổng thể: **Backend monolith `hc_code_app` (phòng khám) + Bac
 
 - **Stack:** Java 8, Spring Boot **2.3.0.RELEASE**, Maven (**module đơn**, chỉ 1 `pom.xml` ở `hc-common/`), Lombok 1.18.20, MapStruct, Spring Data JPA + RSQL parser, Redis (cache), Kafka + RabbitMQ, Spring Security Crypto, JJWT, MinIO/S3 (object storage), POI/Excel, Freemarker, Swagger.
 - **`hc-jasper/`** KHÔNG phải Maven module → chứa **template JasperReports `.jrxml`** (ví dụ `12. BangKeChiPhiKCB.jrxml`). Render thực tế delegate ra external service `ehreport` qua `OnehealthService.renderJasper(...)` (payload XML Base64).
-- **Cấu trúc package** (base `hc.common`): `controller/` → `service/` → `service/impl/` → `repository/<domain>/` → `repository/entity/<domain>/` → `model/` (DTO) + `mapper/` (MapStruct) + `config/`, `constant/`, `exception/` (`HCException` + `AdviceController`), `filter/` (`AppFilter` JWT/tenant), `query/` (RSQL), `utils/`, `aop/`, `kafka/`, `multitenant/`.
+- **Cấu trúc package** (base `hc.common`): `controller/` → `service/` → `service/impl/` → `repository/<domain>/` → `repository/entity/<domain>/` → `model/` (DTO) + `mapper/` (MapStruct) + `config/` (Swagger, Redis, RestTemplate, `config/multitenant/` schema-per-tenant, `config/rabbitmq/`), `constant/` (+ `constant/trangthai/` với nhiều class `TrạngThai*`, `constant/loai/`), `exception/` (`HCException`, `JwtTokenException` + `AdviceController`), `filter/` (`AppFilter` JWT/tenant), `query/` (RSQL), `utils/` (gồm `jdbc/ReportJdbcExecutor`, `ZonedDateTimeDeserializer`), `aop/` (LoggingAop), `kafka/`.
 - **Quy ước prefix domain (quan trọng):**
   - `Dm` = Danh mục/dictionary (`DmNhanVien`, `DmKhoaPhong`)
   - `Kb` = Khám bệnh (`KbBenhNhan`, `KbPhieu`, `KbChiDinhDichVu`)
@@ -45,9 +45,10 @@ Kiến trúc tổng thể: **Backend monolith `hc_code_app` (phòng khám) + Bac
 ## 2. hc_code_saas — Backend nền tảng SaaS — `hc-saas`
 
 - **Công nghệ:** Java 8, Spring Boot **2.3.0.RELEASE**, Spring Cloud Hoxton.SR5, Maven, Lombok + MapStruct, JPA + RSQL, Redis, Kafka, PostgreSQL, JJWT + `onehealth.authentication2factor` (2FA), MinIO, POI, Swagger.
-- **Base package** `hc.saas`: `controller/` (kế thừa `BaseController<D>` → CRUD generic), `service/` + `service/impl/` (kế thừa `BaseServiceImpl` đều RSQL `search()`), `repository/` + `repository/entity/`, `mapper/` (MapStruct), `model/request/`, `model/sme/`, `model/vncare/`, `query/` (RSQL builder), `utils/` (`JwtTokenFactory`, `PasswordUtil`, `ContextUtil`, `TOPTUtil`), `constant/enums/`, `config/`, `exception/` (`HCException`, `JwtTokenException`), `kafka/`.
-- **REST naming:** Dùng tiếng Việt **kebab-case**, ví dụ `public/login` (`/public/login`), `/dang-ky-pk-step1`, `/xacnhandonhang`, `/ql-khoitao-donghang`, `/vaitro/add/chucnang`, `/onesme/notify`. Entity path thường `/tên-entity-lowercase`.
-- **Quy ước lớp:** Controller `@RestController` `@RequestMapping("/<lowercase>")`, extends `BaseController<D>`; Service interface + `ServiceImpl` suffix; Repository `XxxRepository extends BaseRepository<T>`; Entity `@Entity @Table(name="snake_case")` Lombok `@Data @Builder` `extends BaseDmEntity` (audit) → `BaseEntity`.
+- **Base package** `hc.saas`: `controller/`, `service/` + `service/impl/`, `repository/` + `repository/entity/`, `mapper/` (MapStruct), `model/request/`, `model/sme/`, `model/vncare/`, `query/` (RSQL builder), `utils/` (`JwtTokenFactory`, `PasswordUtil`, `ContextUtil`, `TOPTUtil`), `constant/enums/`, `config/`, `exception/` (`HCException`, `JwtTokenException`), `kafka/`.
+- Các domain nghiệp vụ chính: `DonHang`/`SaDonHangCt`, `DmTaiKhoan`, `DmCsyt`, `DmVaiTro`/`DmChucNang`/`DmQuyen`, `HopDong`, `PhongKham`, `KhachHang`, `HtCauHinh`, `SaSanLuongCong`, `DtdtThongKe` (đơn thuốc điện tử). Jackson naming strategy snake_case (`config/SnakeCaseUpperCaseStrategy`).
+- **REST naming:** Dùng tiếng Việt **kebab-case**, ví dụ `/public/login`, `/dang-ky-pk-step1`, `/xacnhandonhang`, `/ql-khoitao-donghang`, `/vaitro/add/chucnang`, `/onesme/notify`. Entity path thường `/tên-entity-lowercase`.
+- **Layering & quy ước lớp:** Controller `@RestController` `@RequestMapping("/<lowercase>")` extends `BaseController<D>` (CRUD generic `POST /create`, `PUT /update`, `DELETE /delete`, `GET /details`, `GET /search`); Service interface + `*ServiceImpl` extends `BaseServiceImpl<E>` / `BaseDmServiceImpl<E extends BaseDmEntity>` (generic `search()` dùng RSQL); Repository `XxxRepository extends BaseRepository<T>`; Entity `@Entity @Table(name="snake_case")` Lombok `@Data @Builder` extends `BaseDmEntity` (audit) → `BaseEntity`. Service nghiệp vụ đặt tên theo nghiệp vụ tiếng Việt không dấu: `DonHangServiceImpl` (onboarding), `PublicServiceImpl` (login), `RoleAccountServiceImpl`, `HtGoiChucNangServiceImpl`, `HtCsytTrangThaiMenuServiceImpl`.
 - **Kiến trúc SaaS:** **schema-per-tenant** Postgres, schema `hc_cli_*` từ template `hc_cli_template_chung`, `hc_cli_template_mienphi`. Đơn hàng `DonHang` (`sa_donhang`) → onboarding `DonHangServiceImpl` (`dangKyStep1/2`, `quanLyKhoiTaoDonHang` → tạo `DmCsyt/DmNhanVien/PhongKham/HopDong` → SME/Kafka provision).
 - **RBAC:** `dm_vaitro`, `dm_chucnang`, `dm_quyen`, join `dm_taikhoan_vaitro`, `dm_vaitro_chucnang`, `dm_chucnang_quyen`, `HistoryRoleAccount`; module mới động `ht_goi_chucnang`, `ht_csyt_trangthai_menu`.
 - **Auth:** `PublicController /public/login` → `/loginStep2` (2FA modes: TOTP_EMAIL/SMS, OTP_EMAIL/SMS) → JWT access/refresh RS256 (issuer `http://HC.VNCARE.VN`) via `JwtTokenFactory`.
@@ -106,11 +107,25 @@ Kiến trúc tổng thể: **Backend monolith `hc_code_app` (phòng khám) + Bac
 | Đăng nhập, tài khoản, đơn hàng, RBAC, quyền | `hc_code_saas` |
 | Quản trị SaaS (tài khoản, đơn hàng, CSYT, hợp đồng) | `hc_code_saas` (backend) + `hc_code_frontend_saas` (web) |
 | Worker đăng ký / provision tenant schema | `hc_code_saas_job` |
-| Drop đơn hàng mới → tạo schema `HC_CLI_*` | `hc_code_saas_job` |
+| Xử lý đơn hàng mới → tạo schema `HC_CLI_*` | `hc_code_saas_job` |
 | Báo cáo sản lượng (22:00) / quét thuốc hạn | `hc_code_saas_job` |
 | Frontend phòng khám (bệnh nhân, báo cáo) | `hc_code_frontend` (web) |
 | Frontend SaaS admin (tenant, người dùng, vai trò, CSYT) | `hc_code_frontend_saas` (web) |
 | Mobile mockup (bản demo) | `hc_code_frontend` / `hc_code_frontend_saas` (mobile) |
+
+---
+
+## Lệnh build / run & entry point
+
+| Repo | Entry point / main | Port | Build | Run (dev) |
+|------|--------------------|------|-------|-----------|
+| `hc_code_app` (`hc-common`) | `hc.common.Application` | **8081** (mọi profile) | `mvn clean package -Dmaven.test.skip=true` (wrapper `mvnw`) | `java -jar target\common-0.0.1.jar --spring.profiles.active=dev` (hoặc script `deploy-local.ps1`) |
+| `hc_code_saas` (`hc-saas`) | `hc.saas.Application` | **8083** | `mvn clean package -Dmaven.test.skip=true` | chạy jar với `--spring.profiles.active=dev` |
+| `hc_code_saas_job` (`job-saas`) | `hc.jobsaas.JobSaasApplication` | không HTTP nghiệp vụ | `mvn clean package -Dmaven.test.skip=true` (script `build.skiptest.bat`) | chạy jar với profile `dev/test/staging/production` |
+| `hc_code_frontend` (`web`) | Angular app `emrsso` | dev **9061** | `npm run webpack:prod` (dev: `npm run webpack:dev`) | `npm run webpack:dev`; proxy → `http://localhost:8080` |
+| `hc_code_frontend_saas` (`web`) | Angular app `emrsso` | dev **9062** | `npm run webpack:prod` | `npm run webpack:dev`; proxy → `http://localhost:8080` |
+
+Lưu ý: cả 2 frontend web dùng Angular **9 core (`@angular/core ^9.0.4`) + Material/CDK 11** (bản kết hợp của JHipster `generator-jhipster 6.8.0`), build bằng **Webpack 4.41 custom** (`@ngtools/webpack 9.0.4`, không dùng Angular CLI build), Node dùng `--max_old_space_size=8192`. Entry script: `npm start` = `webpack:dev`. Mobile của 2 repo là PWA tĩnh (template "Affan", Pug/SCSS), build bằng `gulp` (không cần backend).
 
 ---
 
