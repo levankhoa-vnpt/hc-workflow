@@ -136,3 +136,16 @@ Lưu ý: cả 2 frontend web dùng Angular **9 core (`@angular/core ^9.0.4`) + M
 - REST naming backend: tiếng Việt kebab-case; trả về `BaseResponse` code `"00"`.
 - SQL migration theo cấu trúc `deploy/database/YYYYMMDD(.sql)` kèm header mô tả.
 - Tất cả microservice/Dockerfile base `openjdk:8-jdk-alpine` (hoặc registry nội bộ VNPT), TZ `Asia/Ho_Chi_Minh`, Jenkins CI/CD → Nexus registry + docker-compose SSH deploy.
+
+## Quy tắc bàn giao (bắt buộc với mọi agent, mọi session)
+
+Trước khi bắt đầu BẤT KỲ task nào, luôn kiểm tra `.opencode/progress/` xem có file nào status khác `done` liên quan đến yêu cầu không. Nếu có, đọc toàn bộ file đó trước — nó chứa: đã làm gì, đang ở bước nào, đang chờ gì, việc tiếp theo là gì. Tiếp tục đúng từ đó, không hỏi lại người dùng những thông tin đã có sẵn trong file, không làm lại từ đầu.
+
+Luôn cập nhật đúng progress file sau mỗi bước hoàn thành, khi bị block, và trước khi dừng lại chờ người dùng xử lý việc gì đó — để bất kỳ ai (người, hay agent khác) đọc lại cũng hiểu đúng tình trạng hiện tại.
+
+Dùng lệnh `/work` để bắt đầu hoặc tiếp tục 1 task theo đúng quy trình chuẩn của team.
+
+## Ràng buộc quan trọng — KHÔNG tự động hóa
+
+- Agent KHÔNG được tự chạy/compile/apply SQL migration vào database thật (flyway, liquibase, psql, mysql...). Chỉ tạo file migration theo convention `deploy/database/YYYYMMDD/<tên>.sql`, người dùng tự chạy tay.
+- Agent KHÔNG được tự merge code vào bất kỳ nhánh nào (dev/release/test/main...). Merge luôn do người dùng tự thực hiện thủ công qua Pull Request.
