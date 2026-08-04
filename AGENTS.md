@@ -149,3 +149,8 @@ Dùng lệnh `/work` để bắt đầu hoặc tiếp tục 1 task theo đúng q
 
 - Agent KHÔNG được tự chạy/compile/apply SQL migration vào database thật (flyway, liquibase, psql, mysql...). Chỉ tạo file migration theo convention `deploy/database/YYYYMMDD/<tên>.sql`, người dùng tự chạy tay.
 - Agent KHÔNG được tự merge code vào bất kỳ nhánh nào (dev/release/test/main...). Merge luôn do người dùng tự thực hiện thủ công qua Pull Request.
+
+## Môi trường test (dùng cho chrome-devtools MCP)
+
+Cấu hình môi trường test: .opencode/test-env.md (có trong git).
+Credential thật: .opencode/test-env.local.md (KHÔNG có trong git, mỗi máy/agent cần có file này cục bộ). Khi cần kiểm tra kết quả trên môi trường test (bước 13 trong lệnh /work): ưu tiên đọc .opencode/test-env.local.md để lấy URL + đăng nhập; nếu file đó không tồn tại, đọc .opencode/test-env.md để biết URL, rồi HỎI người dùng để lấy credential — không tự đoán, không dùng giá trị mặc định.
