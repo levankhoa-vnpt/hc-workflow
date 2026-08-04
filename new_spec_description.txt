@@ -1,0 +1,1 @@
+Phân tích yêu cầu, đọc code liên quan, ra spec chuẩn để đưa vào /work — KHÔNG code, KHÔNG sửa file

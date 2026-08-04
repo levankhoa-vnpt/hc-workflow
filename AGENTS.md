@@ -150,6 +150,10 @@ Dùng lệnh `/work` để bắt đầu hoặc tiếp tục 1 task theo đúng q
 - Agent KHÔNG được tự chạy/compile/apply SQL migration vào database thật (flyway, liquibase, psql, mysql...). Chỉ tạo file migration theo convention `deploy/database/YYYYMMDD/<tên>.sql`, người dùng tự chạy tay.
 - Agent KHÔNG được tự merge code vào bất kỳ nhánh nào (dev/release/test/main...). Merge luôn do người dùng tự thực hiện thủ công qua Pull Request.
 
+## Quy tắc đặt tên (naming convention)
+
+Xem chi tiết ở file NAMING_CONVENTIONS.md. Bắt buộc áp dụng cho MỌI code mới được tạo (class, file, method, variable, table, API endpoint mới). KHÔNG áp dụng để refactor code cũ trừ khi được yêu cầu rõ ràng.
+
 ## Môi trường test (dùng cho chrome-devtools MCP)
 
 Cấu hình môi trường test: .opencode/test-env.md (có trong git).
